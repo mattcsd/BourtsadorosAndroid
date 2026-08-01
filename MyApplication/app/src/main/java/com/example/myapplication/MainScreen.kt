@@ -1,16 +1,13 @@
 package com.example.bourtsadoros.ui.screen
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -42,8 +39,6 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
     val isPlaying by viewModel.isPlaying.collectAsState()
     val currentPlayingIndex by viewModel.currentPlayingIndex.collectAsState()
     val progress by viewModel.progress.collectAsState()
-    val fadeEnabled by viewModel.fadeEnabled.collectAsState()
-    val fadeDurationMs by viewModel.fadeDurationMs.collectAsState()
     val chords = viewModel.chords
 
     val totalDurationFormatted = remember(sequence, bpm, loopCount, infiniteLoop) {
@@ -263,34 +258,6 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
                             checked = infiniteLoop,
                             onCheckedChange = { viewModel.toggleInfiniteLoop() }
                         )
-                    }
-
-                    AnimatedVisibility(
-                        visible = fadeEnabled,
-                        enter = fadeIn(),
-                        exit = fadeOut()
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Opacity, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Fade ${fadeDurationMs}ms", style = MaterialTheme.typography.titleSmall)
-                            Spacer(modifier = Modifier.weight(1f))
-                            Slider(
-                                value = fadeDurationMs.toFloat(),
-                                onValueChange = { viewModel.setFadeDurationMs(it.toLong()) },
-                                valueRange = 20f..200f,
-                                steps = 0,
-                                modifier = Modifier.width(120.dp)
-                            )
-                        }
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Waves, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Fade", style = MaterialTheme.typography.titleSmall)
-                        Spacer(modifier = Modifier.weight(1f))
-                        Switch(checked = fadeEnabled, onCheckedChange = { viewModel.toggleFadeEnabled() })
                     }
                 }
             }

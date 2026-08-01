@@ -16,15 +16,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.roundToLong
 
 class BourtsadorosViewModel(application: Application) : AndroidViewModel(application) {
 
     private val app = application
 
     val chords = listOf(
-        Chord("Am", Color(0xFFE91E63), R.raw.chord_am),
-        Chord("Dm", Color(0xFF2196F3), R.raw.chord_dm),
-        Chord("G", Color(0xFF4CAF50), R.raw.chord_g)
+        Chord("Do", Color(0xFFE91E63), R.raw.chord_do),
+        Chord("La", Color(0xFF2196F3), R.raw.chord_la),
+        Chord("Sol", Color(0xFF4CAF50), R.raw.chord_sol),
+        Chord("Re", Color(0xFFCDDC39), R.raw.chord_re)
     )
 
     private val _sequence = MutableStateFlow<List<Int>>(emptyList())
@@ -48,18 +50,14 @@ class BourtsadorosViewModel(application: Application) : AndroidViewModel(applica
     private val _progress = MutableStateFlow(0f)
     val progress: StateFlow<Float> = _progress.asStateFlow()
 
-    private val _fadeEnabled = MutableStateFlow(true)
-    val fadeEnabled: StateFlow<Boolean> = _fadeEnabled.asStateFlow()
-
-    private val _fadeDurationMs = MutableStateFlow(30L)
-    val fadeDurationMs: StateFlow<Long> = _fadeDurationMs.asStateFlow()
-
     private var soundPool: SoundPool? = null
     private val soundIds = mutableMapOf<Int, Int>()
     private val sampleDurationsMs = mutableMapOf<Int, Long>()
     private var playbackJob: Job? = null
     private var progressJob: Job? = null
-    private var fadeJobs = mutableListOf<Job>()
+
+    // Overlap in milliseconds to mask start latency and ensure seamless transitions
+    private val overlapMs = 20L
 
     init {
         try {
@@ -102,54 +100,29 @@ class BourtsadorosViewModel(application: Application) : AndroidViewModel(applica
         }
     }
 
-    fun addChord(chordIndex: Int) {
-        _sequence.value = _sequence.value + chordIndex
-    }
-
+    fun addChord(chordIndex: Int) { _sequence.value = _sequence.value + chordIndex }
     fun removeChordAt(position: Int) {
         _sequence.value = _sequence.value.toMutableList().apply {
             if (position in indices) removeAt(position)
         }
     }
-
-    fun clearSequence() {
-        _sequence.value = emptyList()
-    }
-
-    fun setBpm(newBpm: Int) {
-        _bpm.value = newBpm.coerceIn(50, 200)
-    }
-
-    fun setLoopCount(count: Int) {
-        _loopCount.value = count.coerceIn(1, 99)
-    }
-
+    fun clearSequence() { _sequence.value = emptyList() }
+    fun setBpm(newBpm: Int) { _bpm.value = newBpm.coerceIn(50, 200) }
+    fun setLoopCount(count: Int) { _loopCount.value = count.coerceIn(1, 99) }
     fun toggleInfiniteLoop() {
-        _infiniteLoop.value = !_infiniteLoop.value
-        if (_infiniteLoop.value) {
-            // if playing, it will just continue looping indefinitely; no action needed
-        }
+        val wasInfinite = _infiniteLoop.value
+        _infiniteLoop.value = !wasInfinite
+        if (wasInfinite && _isPlaying.value) stopPlayback()
     }
-
-    fun toggleFadeEnabled() {
-        _fadeEnabled.value = !_fadeEnabled.value
-    }
-
-    fun setFadeDurationMs(duration: Long) {
-        _fadeDurationMs.value = duration.coerceIn(20, 200)
-    }
-
-    fun togglePlay() {
-        if (_isPlaying.value) stopPlayback() else startPlayback()
-    }
+    fun togglePlay() { if (_isPlaying.value) stopPlayback() else startPlayback() }
 
     private fun startPlayback() {
         val seq = _sequence.value
         if (seq.isEmpty()) return
         _isPlaying.value = true
         playbackJob = viewModelScope.launch {
-            val noteDurationMs = 60_000L / _bpm.value
-            val fadeDur = if (_fadeEnabled.value) _fadeDurationMs.value else 0L
+            val baseBpm = 120f
+            val rate = _bpm.value / baseBpm
             val infinite = _infiniteLoop.value
             val loops = if (infinite) Int.MAX_VALUE else _loopCount.value
 
@@ -167,20 +140,17 @@ class BourtsadorosViewModel(application: Application) : AndroidViewModel(applica
                     if (soundId == 0) continue
 
                     val sampleDur = sampleDurationsMs[chord.rawResId] ?: 500L
-                    val isFirstNote = (loop == 0 && stepIndex == 0)
-                    val isLastNote = if (infinite) false else (loop == loops - 1 && stepIndex == currentSequence.size - 1)
+                    val stepDuration = (sampleDur / rate).roundToLong()
 
-                    val streamId = soundPool?.play(soundId, 1f, 1f, 0, 0, 1f) ?: 0
+                    // Play the sound at the calculated rate
+                    soundPool?.play(soundId, 1f, 1f, 0, 0, rate)
 
-                    fadeJobs.clear()
-                    if (fadeDur > 0 && streamId != 0) {
-                        if (!isFirstNote) fadeJobs.add(fadeIn(streamId, fadeDur))
-                        if (!isLastNote) fadeJobs.add(fadeOut(streamId, noteDurationMs - fadeDur, fadeDur))
-                    }
+                    progressJob = launchProgressAnimation(stepDuration)
 
-                    progressJob = launchProgressAnimation(noteDurationMs)
-
-                    delay(noteDurationMs)
+                    // Delay by step duration minus the overlap, so the next note starts a little early,
+                    // overlapping the tail of this one to eliminate the gap.
+                    val delayTime = (stepDuration - overlapMs).coerceAtLeast(0)
+                    delay(delayTime)
 
                     progressJob?.cancel()
                     _progress.value = 0f
@@ -209,8 +179,6 @@ class BourtsadorosViewModel(application: Application) : AndroidViewModel(applica
     private fun stopPlayback() {
         playbackJob?.cancel()
         progressJob?.cancel()
-        fadeJobs.forEach { it.cancel() }
-        fadeJobs.clear()
         playbackJob = null
         progressJob = null
         _isPlaying.value = false
@@ -218,31 +186,8 @@ class BourtsadorosViewModel(application: Application) : AndroidViewModel(applica
         _progress.value = 0f
     }
 
-    private fun fadeIn(streamId: Int, duration: Long): Job = viewModelScope.launch {
-        val steps = 20
-        val stepTime = duration / steps
-        for (i in 0..steps) {
-            val vol = i.toFloat() / steps
-            soundPool?.setVolume(streamId, vol, vol)
-            delay(stepTime)
-        }
-    }
-
-    private fun fadeOut(streamId: Int, startDelayMs: Long, duration: Long): Job = viewModelScope.launch {
-        delay(startDelayMs)
-        val steps = 20
-        val stepTime = duration / steps
-        for (i in steps downTo 0) {
-            val vol = i.toFloat() / steps
-            soundPool?.setVolume(streamId, vol, vol)
-            delay(stepTime)
-        }
-        soundPool?.setVolume(streamId, 0f, 0f)
-    }
-
     override fun onCleared() {
         super.onCleared()
-        fadeJobs.forEach { it.cancel() }
         soundPool?.release()
         playbackJob?.cancel()
         progressJob?.cancel()

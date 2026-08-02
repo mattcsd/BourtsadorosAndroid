@@ -43,7 +43,7 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
 
     val totalDurationFormatted = remember(sequence, bpm, loopCount, infiniteLoop) {
         if (sequence.isEmpty()) "00:00"
-        else if (infiniteLoop) "\u221E" // infinity symbol
+        else if (infiniteLoop) "\u221E"
         else {
             val totalSeconds = (sequence.size * 60.0 / bpm) * loopCount
             val minutes = (totalSeconds / 60).toInt()
@@ -95,7 +95,7 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LibraryMusic, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Chords", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     }
@@ -138,7 +138,7 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.List, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Sequence", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         if (sequence.isNotEmpty()) {
@@ -211,7 +211,7 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Tempo", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.weight(1f))
@@ -227,7 +227,7 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Repeat, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.Refresh, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Loop", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.weight(1f))
@@ -239,7 +239,7 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
                         )
                         if (!infiniteLoop) {
                             IconButton(onClick = { viewModel.setLoopCount(loopCount - 1) }) {
-                                Icon(Icons.Default.Remove, contentDescription = "Decrease")
+                                Icon(Icons.Default.Delete, contentDescription = "Decrease")
                             }
                             IconButton(onClick = { viewModel.setLoopCount(loopCount + 1) }) {
                                 Icon(Icons.Default.Add, contentDescription = "Increase")
@@ -250,7 +250,7 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.AllInclusive, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Infinite Loop", style = MaterialTheme.typography.titleSmall)
                         Spacer(modifier = Modifier.weight(1f))
@@ -274,7 +274,7 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Total Duration", style = MaterialTheme.typography.titleSmall)
                     Spacer(modifier = Modifier.weight(1f))
@@ -299,7 +299,7 @@ fun MainScreen(viewModel: BourtsadorosViewModel = viewModel()) {
                 colors = ButtonDefaults.buttonColors(containerColor = playButtonColor)
             ) {
                 Icon(
-                    imageVector = if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
+                    imageVector = if (isPlaying) Icons.Default.Close else Icons.Default.PlayArrow,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp)
                 )
